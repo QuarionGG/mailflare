@@ -372,6 +372,20 @@
       "when": 1788850801023,
       "tag": "0060_add_license_seat_limit",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "6",
+      "when": 1791662400000,
+      "tag": "0061_native_crm_inbox",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "6",
+      "when": 1791676800000,
+      "tag": "0062_native_crm_environment_budget",
+      "breakpoints": true
     }
   ]
 }

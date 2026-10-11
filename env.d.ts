@@ -12,7 +12,15 @@ interface CloudflareEnv {
 	OUTBOUND_QUEUE: Queue<
 		| import("./src/lib/email/send").OutboundQueueMessage
 		| import("./src/lib/email/webhooks").WebhookRetryMessage
+		| import("./src/lib/email/native-crm-inbox").NativeCrmInboxJob
 	>;
+	/** Optional native inbox relay, enabled explicitly per environment. */
+	MAILFLARE_ENVIRONMENT?: string;
+	CRM_INBOX_RELAY_ENABLED?: string;
+	CRM_INBOX_RECIPIENTS?: string;
+	CRM_INBOX_ORIGIN?: string;
+	CRM_INBOX_RELAY_SECRET?: string;
+	CRM_INBOX?: Fetcher;
 	ASSETS: Fetcher;
 	IMAGES: ImagesBinding;
 	WORKER_SELF_REFERENCE: Fetcher;

@@ -41,6 +41,24 @@ await build({
 const { SqliteDatabase, applyMigrations, assertBackupTablesCoverDatabase, exportDatabaseRecords, restoreDatabaseRecords } = await import(pathToFileURL(join(bundleDirectory, "entry.mjs")).href);
 const newTables = ["push_subscriptions", "drive_items", "drive_shares", "drive_upload_parts"];
 
+test("native CRM outbox snapshot and exhausted budget survive backup/restore, while older schemas fail before deleting data", async t => {
+	const current = await database(t);
+	seedAccounts(current);
+	current.db.prepare(`INSERT INTO native_crm_inbox_deliveries
+		(id,environment,from_address,to_address,received_at,target_origin,raw_r2_key,raw_sha256,raw_size,created_at,expires_at,attempts,dispatches,status,next_attempt_at,last_error)
+		VALUES ('mailflare:stable','production','customer@example.com','support@example.com','2026-10-11T00:00:00.000Z',
+		'https://crm.example.com','inbound/original.eml',?,100,1,2,4,4,'exhausted',2,'budget-exhausted')`).run("a".repeat(64));
+	const original = current.db.prepare("SELECT * FROM native_crm_inbox_deliveries").all();
+	const backup = await exportDatabaseRecords(current);
+	current.db.prepare("DELETE FROM native_crm_inbox_deliveries").run();
+	await restoreDatabaseRecords(current, backup.buffer);
+	assert.deepEqual(current.db.prepare("SELECT * FROM native_crm_inbox_deliveries").all(), original);
+	const older = await database(t, previousMigrations);
+	seedAccounts(older);
+	await assert.rejects(restoreDatabaseRecords(older, backup.buffer), /Apply pending database migrations before restoring native crm inbox deliveries/);
+	assert.equal(older.db.prepare("SELECT count(*) AS n FROM users").get().n, 2);
+});
+
 async function database(t, migrations = migrationsDirectory) {
 	const database = new SqliteDatabase(":memory:");
 	t.after(() => database.db.close());
