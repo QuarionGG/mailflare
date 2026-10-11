@@ -62,3 +62,5 @@ mailflare-landing
 .agents
 skills-lock.json
 /dist/
+# Deployment-owned relay configuration never belongs in Git.
+.mailflare-deployment/

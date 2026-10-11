@@ -1,4 +1,5 @@
 import { newId } from "@/lib/ids";
+import { enqueueNativeCrmInbox } from "@/lib/email/native-crm-inbox";
 import { getAccountForwardingDestination, MAILFLARE_FORWARDED_HEADER } from "@/lib/email/account-forwarding";
 import { resolveIncomingMail } from "@/lib/email/incoming";
 import type { InboundQueueMessage } from "@/lib/email/inbound";
@@ -38,6 +39,7 @@ export async function intakeIncomingMail(env: CloudflareEnv, input: IntakeInput,
 		customMetadata: { from: input.from, to: input.to },
 	});
 	const payload: InboundQueueMessage = { from: input.from, to: input.to, rawR2Key, headers: input.headers };
+	await enqueueNativeCrmInbox(env, payload, input.raw);
 	await env.INBOUND_QUEUE.send(payload);
 	return { action: "store", rawR2Key, forwardedTo };
 }

@@ -8,6 +8,7 @@ import {
 import { processOutboundQueue, type OutboundQueueMessage } from "./src/lib/email/send";
 import { isInboundQueueMessage, isWebhookRetryMessage } from "./worker-utils";
 import { processWebhookRetry, type WebhookRetryMessage } from "./src/lib/email/webhooks";
+import { enqueueNativeCrmInbox, deliverNativeCrmInbox, recoverNativeCrmInbox, type NativeCrmInboxJob } from "./src/lib/email/native-crm-inbox";
 import { resolveIncomingMail, forwardMessage } from "./src/lib/email/incoming";
 import { getUserFromSession } from "./src/lib/auth/session";
 import { getSessionTokenFromRequest } from "./src/lib/realtime/utils";
@@ -92,6 +93,7 @@ export default {
 				rawR2Key,
 				headers: Object.fromEntries(message.headers),
 			};
+			await enqueueNativeCrmInbox(env, payload, raw);
 			await env.INBOUND_QUEUE.send(payload);
 		} catch (err) {
 			console.error("Inbound enqueue failed", err);
@@ -107,6 +109,9 @@ export default {
 					await processInboundMessage(env, msg.body);
 				} else if (typeof msg.body === "object" && msg.body !== null && (msg.body as { kind?: unknown }).kind === "agent.draft" && typeof (msg.body as { jobId?: unknown }).jobId === "string") {
 					await processAgentDraftJob(env, (msg.body as { jobId: string }).jobId);
+				} else if (typeof msg.body === "object" && msg.body !== null && (msg.body as { kind?: unknown }).kind === "native-crm-inbox"
+					&& typeof (msg.body as { deliveryId?: unknown }).deliveryId === "string") {
+					await deliverNativeCrmInbox(env, msg.body as NativeCrmInboxJob);
 				} else if (isWebhookRetryMessage(msg.body)) {
 					await processWebhookRetry(env, msg.body as WebhookRetryMessage);
 				} else if (typeof msg.body === "object" && msg.body !== null && (msg.body as { kind?: unknown }).kind === "email.scheduled") {
@@ -129,6 +134,7 @@ export default {
 
 	async scheduled(controller: ScheduledController, rawEnv: CloudflareEnv, ctx: ExecutionContext) {
 		const env = withStorage(rawEnv);
+		if (controller.cron === "*/5 * * * *") ctx.waitUntil(recoverNativeCrmInbox(env));
 		if (controller.cron === "0 2 * * *") ctx.waitUntil(runScheduledDatabaseBackup(env, new Date(controller.scheduledTime)));
 		ctx.waitUntil(runAgentMaintenance(env));
 		ctx.waitUntil(runTrashRetention(env, new Date(controller.scheduledTime)));

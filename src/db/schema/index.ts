@@ -868,7 +868,31 @@ export const driveShares = sqliteTable("drive_shares", {
 	index("drive_shares_user_idx").on(t.userId),
 ]);
 
+/** Frozen raw MIME routing snapshot and bounded delivery state; milliseconds for retry/lease fields. */
+export const nativeCrmInboxDeliveries = sqliteTable("native_crm_inbox_deliveries", {
+	id: text("id").primaryKey(),
+	environment: text("environment", { enum: ["staging", "production"] }).notNull().default("staging"),
+	fromAddress: text("from_address").notNull(),
+	toAddress: text("to_address").notNull(),
+	receivedAt: text("received_at").notNull(),
+	targetOrigin: text("target_origin").notNull(),
+	rawR2Key: text("raw_r2_key").notNull(),
+	rawSha256: text("raw_sha256").notNull(),
+	rawSize: integer("raw_size").notNull(),
+	createdAt: integer("created_at").notNull(),
+	expiresAt: integer("expires_at").notNull(),
+	attempts: integer("attempts").notNull().default(0),
+	dispatches: integer("dispatches").notNull().default(0),
+	nextDispatchAt: integer("next_dispatch_at").notNull().default(0),
+	status: text("status", { enum: ["pending", "accepted", "exhausted"] }).notNull().default("pending"),
+	nextAttemptAt: integer("next_attempt_at").notNull(),
+	leaseUntil: integer("lease_until"),
+	crmMessageId: text("crm_message_id"),
+	lastError: text("last_error"),
+}, (table) => [index("native_crm_inbox_due_idx").on(table.status, table.nextAttemptAt), index("native_crm_inbox_created_idx").on(table.createdAt)]);
+
 export const schema = {
+	nativeCrmInboxDeliveries,
 	users,
 	domains,
 	mailboxes,

@@ -12,6 +12,7 @@ export default defineConfig({
 	plugins: [
 		vinext({ images: { optimizer: imagesOptimizer() } }),
 		cloudflare({
+			...(process.env.MAILFLARE_DEPLOYMENT_PROFILE !== undefined ? { configPath: ".mailflare-deployment/wrangler.json" } : {}),
 			remoteBindings: process.env.CLOUDFLARE_REMOTE_BINDINGS === "true",
 			viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
 		}),
